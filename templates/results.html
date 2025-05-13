@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html>
+<head>
+     <title>E-Waste Recycling Marketplace</title>
+    <link rel="stylesheet" href="/static/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='static/location.css') }}">
+    <style>
+        .bill-header {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .container {
+            margin-top: 20px;
+        }
+
+        .list-group-item {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .list-group-item:hover {
+            background-color: #f1f1f1;
+            transform: scale(1.02);
+        }
+
+        .badge {
+            font-size: 1rem;
+            padding: 10px;
+            background-color: #6c757d; /* Neutral gray */
+            color: white;
+            border-radius: 5px;
+        }
+
+        .product-card {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .product-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn {
+            border-radius: 5px;
+            font-size: 1rem;
+            padding: 10px 15px;
+        }
+
+        .btn-primary {
+            background-color: #6c757d; /* Neutral gray */
+            border-color: #6c757d;
+        }
+
+        .btn-primary:hover {
+            background-color: #5a6268; /* Darker gray */
+            border-color: #545b62;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+
+        .modal-content {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .credit-balance {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.5rem;
+        }
+
+        .cart-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .cart-item:hover {
+            background-color: #f9f9f9;
+            transform: scale(1.02);
+        }
+
+        .cart-item .btn-danger {
+            font-size: 0.8rem;
+        }
+
+        .text-muted {
+            font-size: 0.9rem;
+        }
+
+        .header {
+            background-color: #6c757d; /* Neutral gray */
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Credits Section -->
+    <div class="container mt-5" id="creditsSection">
+        <h1 class="text-center mb-4">E-Waste Credits</h1>
+        <div id="loading" class="text-center">Detecting objects... Please wait</div>
+        <ul id="results" class="list-group mb-3"></ul>
+        <h3 class="text-center">Total Credits: <span id="total" class="credit-balance">0</span></h3>
+    </div>
+    <!-- ─── New: Map Section ──────────────────────────────────────────────────── -->
+      <div class="container text-center mt-4">
+        <a href="{{ url_for('location') }}" class="btn btn-info">
+      <i class="fas fa-map-marked-alt"></i> 🔍 Find the nearest ♻️ E-Waste Dump Yard! 🚮 (Allow location access 📍)
+    </a>
+  </div>
+    <!-- Shopping Section -->
+    <div class="container mt-5" id="shoppingSection" style="display: none;">
+        <div class="row">
+            <div class="col-md-8">
+                <h2 class="mb-4">Eco Store</h2>
+                <div class="row" id="products">
+                    <!-- Sample Products -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card product-card">
+                            <img src=https://www.rescript.in/assets/uploads/inventory/pro_67332cebca00417338554006848.png class="card-img-top" alt="Recycled Notebook">
+                            <div class="card-body">
+                                <h5 class="card-title">Recycled Notebook</h5>
+                                <p class="card-text">Made from 100% recycled materials</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-success">50 credits</span>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('Notebook', 50)">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Additional Products -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card product-card">
+                            <img src="https://m.media-amazon.com/images/I/71iRxk40ncL._AC_UF1000,1000_QL80_.jpg" class="card-img-top" alt="Eco-Friendly Pen">
+                            <div class="card-body">
+                                <h5 class="card-title">Eco-Friendly Pen</h5>
+                                <p class="card-text">Crafted from recycled plastic materials</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-success">20 credits</span>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('Eco-Friendly Pen', 20)">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card product-card">
+                            <img src="https://www.veraviglie.com/wp-content/uploads/2018/07/DSC_0673web.jpg" class="card-img-top" alt="Recycled Paper">
+                            <div class="card-body">
+                                <h5 class="card-title">Recycled Paper</h5>
+                                <p class="card-text">High-quality paper made from recycled fibers</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-success">30 credits</span>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('Recycled Paper', 30)">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card product-card">
+                            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRchypMRffrVn9NWLglT-2HRz7GZF4n542zSA&s" class="card-img-top" alt="Reusable Water Bottle">
+                            <div class="card-body">
+                                <h5 class="card-title">Reusable Water Bottle</h5>
+                                <p class="card-text">Durable and eco-friendly water bottle</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-success">40 credits</span>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('Reusable Water Bottle', 40)">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card product-card">
+                            <img src="https://images-cdn.ubuy.co.id/65f50db425d10a498c047ad5-solpowben-30000mah-solar-charger-for.jpg" class="card-img-top" alt="Solar-Powered Charger">
+                            <div class="card-body">
+                                <h5 class="card-title">Solar-Powered Charger</h5>
+                                <p class="card-text">Charge your devices with renewable energy</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge badge-success">100 credits</span>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('Solar-Powered Charger', 100)">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Section -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Your Cart</h4>
+                        <div id="cartItems"></div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <strong>Total:</strong>
+                            <span id="cartTotal">0</span> credits
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <strong>Remaining Credits:</strong>
+                            <span id="remainingCredits" class="text-success">0</span>
+                        </div>
+                        <button class="btn btn-success btn-block mt-3" onclick="showCheckoutModal()" id="checkoutBtn">
+                            Checkout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Checkout Modal -->
+    <div class="modal fade" id="checkoutModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Order</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <p>Your order total: <strong><span id="finalTotal"></span> credits</strong></p>
+                        <button class="btn btn-success btn-lg" onclick="generateBill()">
+                            <i class="fas fa-download"></i> Download Bill
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <!-- ─── Map Scripts ───────────────────────────────────────────────────────── -->
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <!-- your existing location.js (rename to location.js under static) -->
+    <script src="{{ url_for('static', filename='static/location.js') }}"></script>
+    <script>
+        let currentCredits = 0;
+        let cart = [];
+
+        // Load initial credits and detected items
+        function loadResults() {
+            fetch('/get_credits')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ready') {
+                        document.getElementById("loading").style.display = 'none';
+                        document.getElementById("shoppingSection").style.display = 'block';
+                        currentCredits = data.total;
+                        updateCreditsDisplay();
+                        populateDetectedItems(data.items, data.credits);
+                    }
+                    setTimeout(loadResults, 5000); // Refresh every 5 seconds
+                });
+        }
+
+        function populateDetectedItems(items, credits) {
+            const resultsList = document.getElementById("results");
+            resultsList.innerHTML = items.map(item => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${item}
+                    <span class="badge badge-primary">${credits[item]} credits</span>
+                </li>
+            `).join('');
+            document.getElementById("total").textContent = currentCredits;
+        }
+
+        function updateCreditsDisplay() {
+            document.getElementById("remainingCredits").textContent = currentCredits - getCartTotal();
+        }
+
+        // Cart functions
+        function addToCart(name, price) {
+            const existingItem = cart.find(item => item.name === name);
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({ name, price, quantity: 1 });
+            }
+            updateCartDisplay();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCartDisplay();
+        }
+
+        function getCartTotal() {
+            return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+        }
+
+        function updateCartDisplay() {
+            const cartItems = document.getElementById("cartItems");
+            const cartTotal = getCartTotal();
+            
+            cartItems.innerHTML = cart.map((item, index) => `
+                <div class="cart-item">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            ${item.name} 
+                            <span class="text-muted">x${item.quantity}</span>
+                        </div>
+                        <div>
+                            ${item.price * item.quantity} credits
+                            <button class="btn btn-sm btn-danger ml-2" onclick="removeFromCart(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById("cartTotal").textContent = cartTotal;
+            updateCreditsDisplay();
+            document.getElementById("checkoutBtn").disabled = cartTotal === 0;
+        }
+
+        function showCheckoutModal() {
+            $('#checkoutModal').modal('show');
+        }
+
+
+
+        async function generateBill() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Color scheme
+    const primaryColor = '#2e7d32'; // Green
+    const accentColor = '#ff6f00'; // Orange
+    const darkColor = '#2d373c';   // Dark gray
+    const textColor = '#4a4a4a';   // Dark gray
+
+    // Add E-Sangrahan logo
+    const imgUrl = 'static/logo_waste.png';
+    try {
+        const img = await loadImage(imgUrl);
+        doc.addImage(img, 'PNG', 20, 15, 40, 15); // Adjusted position
+    } catch {
+        doc.setFontSize(22);
+        doc.setTextColor(primaryColor);
+        doc.text("E-Sangrahan", 10, 20);
+    }
+
+    // Bill content
+    let yPosition = 40;
+    
+    // Header section
+    doc.setTextColor(primaryColor);
+    doc.setFontSize(18);
+    doc.text("Recycling Transaction Receipt", 10, yPosition);
+    
+    doc.setTextColor(textColor);
+    doc.setFontSize(12);
+    yPosition += 10;
+    doc.text(`Transaction ID: #${Math.floor(Math.random() * 1000000)}`, 10, yPosition);
+    yPosition += 7;
+    doc.text(`Date: ${new Date().toLocaleString()}`, 10, yPosition);
+    yPosition += 15;
+
+    // Company Info
+    doc.setTextColor(darkColor);
+    doc.setFont(undefined, 'bold');
+    doc.text("E-Sangrahan Solutions Pvt. Ltd.", 10, yPosition);
+    doc.setFont(undefined, 'normal');
+    yPosition += 7;
+    doc.text("Green Tech Park, Bengaluru", 10, yPosition);
+    yPosition += 7;
+    doc.text("GSTIN: 29AAECE8575L1ZG", 10, yPosition);
+    yPosition += 15;
+
+    // Items table header
+    doc.setFillColor(primaryColor);
+    doc.rect(10, yPosition, 190, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont(undefined, 'bold');
+    doc.text("Item", 12, yPosition + 6);
+    doc.text("Qty", 70, yPosition + 6);
+    doc.text("Price", 100, yPosition + 6);
+    doc.text("Total", 140, yPosition + 6);
+    yPosition += 15;
+
+    // Items list
+    doc.setTextColor(textColor);
+    doc.setFont(undefined, 'normal');
+    cart.forEach((item, index) => {
+        // Alternate row colors
+        if(index % 2 === 0) {
+            doc.setFillColor(245, 245, 245);
+            doc.rect(10, yPosition - 4, 190, 10, 'F');
+        }
+        
+        doc.text(item.name, 12, yPosition);
+        doc.text(item.quantity.toString(), 70, yPosition);
+        doc.text(`${item.price} credits`, 100, yPosition);
+        doc.text(`${item.price * item.quantity} credits`, 140, yPosition);
+        yPosition += 10;
+    });
+
+    // Total section
+    yPosition += 15;
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(primaryColor);
+    doc.text(`Total Credits Spent:`, 10, yPosition);
+    doc.setTextColor(darkColor);
+    doc.text(`${getCartTotal()} credits`, 140, yPosition);
+    
+    yPosition += 10;
+    doc.setTextColor(primaryColor);
+    doc.text(`Remaining Credits:`, 10, yPosition);
+    doc.setTextColor(darkColor);
+    doc.text(`${currentCredits - getCartTotal()} credits`, 140, yPosition);
+
+    // Payment Method
+    yPosition += 20;
+    doc.setTextColor(accentColor);
+    doc.text("Payment Method: Eco-Credits", 10, yPosition);
+    
+    // Terms and Conditions
+    yPosition += 15;
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("Terms & Conditions:", 10, yPosition);
+    yPosition += 5;
+    doc.text("1. Items must be properly segregated for recycling", 10, yPosition);
+    yPosition += 5;
+    doc.text("2. Credits are non-transferable and non-refundable", 10, yPosition);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.setTextColor(primaryColor);
+    doc.text("Thank you for contributing to a sustainable future!", 10, 280);
+    doc.setTextColor(100);
+    doc.text("Contact: bl.en.u4cse22241@bl.students.amrita.edu | Handler: Nischal", 10, 285);
+    doc.text("Recycling Center: 15th Cross, Bengaluru | Open: Mon-Sat 9AM-6PM", 10, 290);
+
+    // Save PDF
+    doc.save(`E-Sangrahan-Bill-${Date.now()}.pdf`);
+
+    // Finalize transaction
+    currentCredits -= getCartTotal();
+    cart = [];
+    updateCartDisplay();
+    updateCreditsDisplay();
+    $('#checkoutModal').modal('hide');
+}
+
+        function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        window.onload = loadResults;
+    </script>
+    
+
+</body>
+</html>

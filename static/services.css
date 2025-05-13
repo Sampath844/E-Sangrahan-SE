@@ -3,27 +3,20 @@
   margin: 0;
   padding: 0;
   /* 
-  -May want to add "border-box for "box-sizing so padding does not affect width
-  -Reset margin and padding 
- */
+    - Reset margin and padding
+    - Ensures box-sizing uses border-box
+  */
 }
 
 body {
-  background: url('mount1.png');
-  background: linear-gradient(to right, #39FF14, gold), url('mount1.png');
-  background-size: cover;
+  background-color: #d8f3dc; /* Solid light greenish background */
   font-family: 'Raleway', sans-serif;
-
-  /* 
-    -Background color is #344a72
-  */
+  /* Removed the background image and gradient for a cleaner look */
 }
 
 a {
   text-decoration: none;
-  /* 
-  Underlined links are ugly :)
- */
+  /* Underlined links are removed */
 }
 
 #container {
@@ -68,103 +61,80 @@ a {
   border-radius: 50px;
 }
 
-
-
-
+/* Modern Form Styling */
 .form-wrap h1,
 .form-wrap p {
   text-align: center;
   padding: 20px;
-  color: #9A6735;
-  /* 
-    May want to center these
-  */
+  color: #333; /* Dark grey for a clean, modern look */
+  font-size: 1.5rem;
 }
 
 .form-wrap .form-group {
-  color: #023D54;
-  border: 2px solid rgb(255, 254, 254) ;
-  padding: 5px;
-  
-  
-  /* 
-    Each label, input is wrapped in .form-group
-  */
+  margin-bottom: 15px;
+  /* Provides spacing between form groups */
 }
 
 .form-wrap .form-group label {
   display: block;
-  margin: 10px 4px;
-  padding: 10px 4px;
-  /* 
-    Label should be turned into a block element
-  */
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #023D54; /* Updated to a modern, darker hue */
+  font-size: 1rem;
 }
 
 .form-wrap .form-group input {
   width: 100%;
-  padding: 10px;
-  border: #023D54 1px solid;
-  border-radius: 50px;
-  
-  /* 
-    Inputs should reach accross the .form-wrap 100% and have some padding
-  */
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc; /* Light grey border for a clean look */
+  border-radius: 8px; /* Subtle rounded corners */
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-wrap .form-group input:focus {
+  border-color: #49c1a2;
+  box-shadow: 0 0 8px rgba(73, 193, 162, 0.5);
 }
 
 .form-wrap button {
   display: block;
-  color: white;
+  width: 100%;
+  padding: 12px;
+  margin-top: 20px;
   border: none;
-  position: relative;
-  padding: 10px;
-  margin-top: 10px;
-  margin-right: 5px;
-  width: 360px;
-  border-radius: 50px;
-  background: 
-  #023D54
-  ;
-  /* 
-    Button should wrap accross 100% and display as block
-    Background color for button is #49c1a2
-  */
+  border-radius: 8px;
+  background-color: #023D54;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 .form-wrap button:hover {
-  margin-top: 10px;
-  background-color: #37a08e ;
-  /* 
-    Hover background color for button is #37a08e
-  */
+  background-color: #37a08e;
 }
 
 .form-wrap .bottom-text {
-
-  margin-top: 70px;
+  margin-top: 20px;
   text-align: center;
-  margin-bottom: 10px;
-  
-  /* 
-    Bottom text is smaller
-  */
+  font-size: 0.9rem;
+  color: #666;
 }
+
 button {
   position: relative;
   top: 24px;
 }
+
 footer {
   margin: 20px;
   text-align: center;
   color: white;
-  /* 
-  Should be centered
- */
 }
 
 footer a {
   color: #49c1a2;
-  /* 
-    Footer link color is #49c1a2
-  */
 }

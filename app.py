@@ -3,6 +3,10 @@ from flask_mail import Mail, Message
 import mysql.connector
 import logging
 import subprocess
+import json
+from math import radians, sin, cos, sqrt, atan2
+from flask import jsonify  
+import os
 
 
 app = Flask(__name__)
@@ -15,6 +19,21 @@ app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = 'scammersanju@gmail.com'
 app.config['MAIL_PASSWORD'] = 'ec3enD1y'
 app.config['MAIL_DEFAULT_SENDER'] = 'scammersanju@gmail.com'
+# Add after app.secret_key
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+app.config.update(
+    SESSION_COOKIE_SAMESITE='Lax',  # Allows cross-origin session sharing
+    SESSION_COOKIE_SECURE=True      # If using HTTPS
+)
+
+# Add this before route definitions
+from flask import session
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 mail = Mail(app)
 
@@ -23,15 +42,25 @@ db_config = {
     "host": "localhost",
     "user": "root",
     "password": "@Sampath2004",
-    "database": "login"
+    "database": "login_details",
+    "autocommit": True  
 }
 
 @app.route('/run_script')
 def run_script():
-    # Run your Python script or command here
-    subprocess.run(['python', 'backup.py'])
-    return "Script executed successfully!"
+    if os.path.exists("detections.txt"):
+        os.remove("detections.txt")
+    subprocess.Popen(['python', 'backup.py'])
+    return redirect(url_for('results'))
 
+@app.route('/results')
+def results():
+    return render_template('results.html')
+
+
+@app.route('/aboutus.html')
+def about():
+    return render_template("aboutus.html")
 
 logging.basicConfig(level=logging.DEBUG)  # Use a proper logging configuration
 
@@ -270,9 +299,130 @@ def location():
     # Your view logic goes here
     return render_template('location.html')
 
-@app.route('/redirect')
-def redirect():
-    return render_template('redirect.html')
+# @app.route('/redirect_page')
+# def redirect_page():
+#     return render_template('redirect.html')
+
+# Add to existing imports
+# import json
+# from math import radians, sin, cos, sqrt, atan2
+# @app.route('/detection_status')
+# def detection_status():
+#     return jsonify({
+#         'detected': 'detected_items' in session,
+#         'items': session.get('detected_items', [])
+#     })
+# # Add after existing routes
+# @app.route('/detected_objects', methods=['POST'])
+# def handle_detection():
+#     # 1. Read JSON body
+#     data = request.get_json(silent=True) or {}
+#     detected_items = [item.lower().replace(" ", "_") for item in data.get('objects', [])]
+#     session['detected_items'] = detected_items
+#     session.modified = True 
+#     session.permanent = True  # optional, makes the session last across browser restarts
+
+#     # Debugging log
+#     print(f"Detected items stored in session: {session.get('detected_items')}")
+#     # 3. Return a pure 302 redirect so browsers will navigate there
+#     return '', 302, {'Location': url_for('detection_results')}
+
+# @app.route('/detection_results')
+# def detection_results():
+#     if 'detected_items' not in session:
+#         return redirect(url_for('index2'))
+
+#     items = session['detected_items']
+#     credits = 0
+#     credits_data = {}
+#     error = None
+
+#     try:
+#         # 2. Connect and fetch credit values
+#         conn = get_connection()
+#         cur = conn.cursor(dictionary=True)
+
+#         placeholders = ', '.join(['%s'] * len(items))
+#         query = """
+#             SELECT item_name, credit_value
+#             FROM e_waste_items
+#             WHERE item_name IN ({placeholders})
+#         """
+#         cur.execute(query % placeholders, items)
+#         results = cur.fetchall()
+
+#         # 3. Build a map and total
+#         credits_data = {r['item_name']: r['credit_value'] for r in results}
+#         credits = sum(credits_data.values())
+
+#     except mysql.connector.Error as err:
+#         error = f"Database error: {err}"
+#         logging.error(error)
+
+#     finally:
+#         # 4. Clean up
+#         if 'cur' in locals(): cur.close()
+#         if 'conn' in locals(): conn.close()
+
+#     # 5. Render your page with items, per-item credits, total credits, and any error
+#     return render_template(
+#         'detection_results.html',
+#         items=items,
+#         credits=credits,
+#         credits_data=credits_data,
+#         error=error
+#     )
+
+
+@app.route('/get_credits')
+def get_credits():
+    try:
+        if not os.path.exists("detections.txt"):
+            return jsonify({"status": "processing"})
+        
+        with open("detections.txt", "r") as f:
+            items = [line.strip() for line in f.readlines()]
+            
+        credits_data = {}
+        total = 0
+        
+        if items:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            placeholders = ', '.join(['%s'] * len(items))
+            query = f"""
+                SELECT item_name, credit_value 
+                FROM e_waste_items 
+                WHERE item_name IN ({placeholders})
+            """
+            cursor.execute(query, items)
+            results = cursor.fetchall()
+            credits_data = {row['item_name']: row['credit_value'] for row in results}
+            total = sum(credits_data.values())
+            
+        return jsonify({
+            "status": "ready",
+            "items": items,
+            "credits": credits_data,
+            "total": total
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        })
+    
+    
+@app.route('/complete_payment')
+def complete_payment():
+    # Add actual payment processing logic here
+    session.pop('detected_items', None)
+    return redirect(url_for('shopping'))
+
+@app.route('/shopping')
+def shopping():
+    return render_template('shopping.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

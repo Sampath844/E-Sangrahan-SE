@@ -1,0 +1,3 @@
+flat-panel-monitor
+tv-remote-control
+smartphone

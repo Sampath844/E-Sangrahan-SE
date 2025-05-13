@@ -10,6 +10,20 @@
       href="https://fonts.googleapis.com/css?family=Raleway"
       rel="stylesheet"/>
       <link rel="stylesheet" href="{{url_for('static',filename='services.css')}}">
+      <script>
+      function getLocation() {
+          if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(showPosition);
+          } else {
+              alert("Geolocation is not supported by this browser.");
+          }
+      }
+
+      function showPosition(position) {
+          document.getElementById('lat').value = position.coords.latitude;
+          document.getElementById('lon').value = position.coords.longitude;
+      }
+</script>
   </head>
   <body>
     <div id="container">

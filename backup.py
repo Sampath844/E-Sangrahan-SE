@@ -1,78 +1,102 @@
 import cv2
 import numpy as np
+import os
+from ultralytics import YOLO  # Changed import for YOLOv8
 
-# Load pre-trained YOLO model
-net = cv2.dnn.readNet("models\yolov3\yolov3.weights", "models\yolov3\yolov3.cfg")
-classes = []
-with open("models\yolov3\coco.names", "r") as f:
-    classes = [line.strip() for line in f.readlines()]
+# Create a named window first and set any desired flags
+cv2.namedWindow("Object Detection", cv2.WINDOW_NORMAL)
+# droidcam_url = "http://192.168.0.184:4747/video"
+# cap = cv2.VideoCapture(droidcam_url)
 
-# Open the video capture object for the laptop camera (usually index 0)
+# Load custom trained YOLOv8 model
+model = YOLO('models/yolov3/ewastebest.pt')  # Changed to YOLOv8 model loading
+model.fuse()  # Optimize model for inference
+
+# Load class labels from the model
+classes = model.names  # Get class names from the model
+
+DETECTION_FILE = "detections.txt"
+
+def save_detections(objects):
+    """Save detected objects to text file"""
+    try:
+        # Read existing detections
+        existing = set()
+        if os.path.exists(DETECTION_FILE):
+            with open(DETECTION_FILE, "r") as f:
+                existing = set(line.strip() for line in f.readlines())
+        
+        # Add new detections
+        new_objects = objects - existing
+        if new_objects:
+            with open(DETECTION_FILE, "a") as f:  # Append mode
+                for obj in new_objects:
+                    normalized = obj.lower().replace(" ", "_")
+                    f.write(normalized + "\n")
+            return True
+        return False
+    except Exception as e:
+        print(f"Error saving detections: {e}")
+        return False
+
+# Initialize video capture
 cap = cv2.VideoCapture(0)
+detected_objects = set()  # Track unique detected objects
 
-while True:
-    # Capture frame-by-frame and check if it's successful
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame")
-        break
+# Clear detection file at start
+if os.path.exists(DETECTION_FILE):
+    os.remove(DETECTION_FILE)
 
-    # Set up the input blob for the network
-    blob = cv2.dnn.blobFromImage(frame, scalefactor=1/255.0, size=(416, 416),
-                                 swapRB=True, crop=False)
-    net.setInput(blob)
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
 
-    # Get output layer names and run forward pass to get detections
-    output_layer_names = net.getUnconnectedOutLayersNames()
-    outs = net.forward(output_layer_names)
+        # YOLOv8 inference
+        results = model(frame, verbose=False)  # Get predictions
+        
+        # Process results
+        current_frame_objects = set()
+        for result in results:
+            boxes = result.boxes.xyxy.cpu().numpy()
+            confidences = result.boxes.conf.cpu().numpy()
+            class_ids = result.boxes.cls.cpu().numpy().astype(int)
+            
+            for box, conf, cls_id in zip(boxes, confidences, class_ids):
+                if conf > 0.5:  # Confidence threshold
+                    x1, y1, x2, y2 = map(int, box)
+                    label = classes[cls_id]
+                    
+                    # Draw bounding box
+                    color = (0, 255, 0)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(frame, f"{label} {conf:.2f}", (x1, y1-10),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    
+                    current_frame_objects.add(label.lower())
 
-    # Initialize lists for detected class IDs, confidences, and bounding boxes
-    class_ids = []
-    confidences = []
-    boxes = []
+        # Check for new objects and save them
+        new_objects = current_frame_objects - detected_objects
+        if new_objects:
+            detected_objects.update(new_objects)
+            if save_detections(new_objects):
+                print(f"New detections saved: {new_objects}")
 
-    # Process detections from each output layer
-    for out in outs:
-        for detection in out:
-            scores = detection[5:]
-            class_id = np.argmax(scores)
-            confidence = scores[class_id]
+        # Display frame
+        cv2.imshow("Object Detection", frame)
 
-            # Filter out weak detections by confidence threshold
-            if confidence > 0.5:
-                # Scale the bounding box coordinates to the original image dimensions
-                center_x = int(detection[0] * frame.shape[1])
-                center_y = int(detection[1] * frame.shape[0])
-                w = int(detection[2] * frame.shape[1])
-                h = int(detection[3] * frame.shape[0])
-                x = int(center_x - w / 2)
-                y = int(center_y - h / 2)
+        # Exit conditions
+        if cv2.getWindowProperty("Object Detection", cv2.WND_PROP_VISIBLE) < 1:
+            print("Window closed by user.")
+            break
 
-                class_ids.append(class_id)
-                confidences.append(float(confidence))
-                boxes.append([x, y, w, h])
-
-    # Apply non-maximum suppression to remove redundant overlapping boxes
-    indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-
-    # Draw bounding boxes on the frame if there are any detections
-    if len(indices) > 0:
-        for i in indices.flatten():
-            x, y, w, h = boxes[i]
-            label = classes[class_ids[i]]
-            confidence = confidences[i]
-            color = (0, 255, 0)  # Green bounding box color
-            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-            cv2.putText(frame, f"{label} {confidence:.2f}", (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-    # Display the resulting frame
-    cv2.imshow("Object Detection", frame)
-
-    # Break the loop when 'q' key is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release the video capture object and close all windows
-cap.release()
-cv2.destroyAllWindows()
+        key = cv2.waitKey(1)
+        if key == ord('q') or key == 27:  # 27 is the ESC key
+            print("Exit key pressed.")
+            break
+finally:
+    # Cleanup
+    cap.release()
+    cv2.destroyAllWindows()
